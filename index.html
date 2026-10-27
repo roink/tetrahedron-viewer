@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Interactive 3D tetrahedron volume explorer">
+  <title>Tetrahedron Volume Explorer</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <main class="app">
+    <section class="viewer-column">
+      <div id="view3d" class="viewer" aria-label="Interactive three-dimensional tetrahedron viewer">
+        <div id="loading3d" class="loading">Loading 3D viewer…</div>
+      </div>
+
+      <div class="help">
+        <span><strong>Drag empty space:</strong> rotate</span>
+        <span><strong>Scroll:</strong> zoom</span>
+        <span><strong>Drag a vertex:</strong> move it</span>
+      </div>
+    </section>
+
+    <aside class="controls">
+      <section class="volume-card">
+        <div class="label">Tetrahedron volume</div>
+        <div id="volumeValue" class="volume" aria-live="polite">—</div>
+        <div class="unit">cubic units</div>
+      </section>
+
+      <section class="control-section">
+        <div class="label">Selected vertex</div>
+
+        <div class="point-buttons">
+          <button type="button" data-index="0" class="point-button">A</button>
+          <button type="button" data-index="1" class="point-button">B</button>
+          <button type="button" data-index="2" class="point-button">C</button>
+          <button type="button" data-index="3" class="point-button">D</button>
+        </div>
+
+        <div class="coordinate-grid">
+          <label>
+            X
+            <input id="coordX" type="number" step="0.1" min="-50" max="50" disabled>
+          </label>
+
+          <label>
+            Y
+            <input id="coordY" type="number" step="0.1" min="-50" max="50" disabled>
+          </label>
+
+          <label>
+            Z
+            <input id="coordZ" type="number" step="0.1" min="-50" max="50" disabled>
+          </label>
+        </div>
+
+        <p class="note">
+          Dragging a vertex moves it parallel to the screen.
+          Rotate the view first to move it in another 3D plane.
+        </p>
+      </section>
+
+      <div class="actions">
+        <button id="fitButton" type="button" disabled>Fit view</button>
+        <button id="resetButton" type="button" class="secondary" disabled>Reset points</button>
+      </div>
+    </aside>
+  </main>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
