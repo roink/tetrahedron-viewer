@@ -142,14 +142,6 @@ input {
   margin-top: 4px;
 }
 
-.point-buttons {
-  margin-top: 12px;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-}
-
-.point-button,
 .actions button {
   min-height: 44px;
   border: 1px solid var(--border);
@@ -157,39 +149,6 @@ input {
   background: var(--panel-2);
   color: var(--text);
   cursor: pointer;
-}
-
-.point-button[aria-pressed="true"] {
-  border-color: var(--accent);
-  background: var(--accent-bg);
-}
-
-.coordinate-grid {
-  margin-top: 16px;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.coordinate-grid label {
-  color: var(--muted);
-  font-size: 0.85rem;
-}
-
-.coordinate-grid input {
-  width: 100%;
-  margin-top: 5px;
-  padding: 9px 8px;
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  background: var(--panel-2);
-  color: var(--text);
-  outline: none;
-}
-
-.coordinate-grid input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent);
 }
 
 .note {
@@ -242,11 +201,27 @@ input:focus-visible {
 }
 
 @media (max-width: 420px) {
-  .coordinate-grid {
-    grid-template-columns: 1fr;
-  }
-
   .viewer {
     min-height: 300px;
   }
 }
+
+h2 { font-size: 1rem; margin: 0 0 14px; }
+.rho { font-size: 2rem; font-variant-numeric: tabular-nums; margin: 12px 0; color: #8f6ac8; }
+#correlation { width: 100%; margin: 18px 0 0; accent-color: #8f6ac8; cursor: ew-resize; }
+#uncorrelated { padding: 8px; margin-top: 12px; border: 1px solid var(--border); background: var(--panel-2); color: var(--text); border-radius: 8px; cursor: pointer; }
+.angle-readout { font-size: .8rem; line-height: 1.7; font-variant-numeric: tabular-nums; }
+.legend { position: absolute; left: 16px; bottom: 16px; display: flex; flex-wrap: wrap; gap: 16px; font-size: .8rem; pointer-events: none; background: var(--panel); padding: 8px; border-radius: 8px; }
+.purple { color: #8f6ac8; }
+.rho { text-align: center; }
+
+/* Keep changing values from shifting the control panel during model drags. */
+#rangeValue { white-space: pre-line; min-height: 2.9em; font-variant-numeric: tabular-nums; }
+.angle-readout { white-space: pre-line; min-height: 5.1em; }
+#status { min-height: 1.45em; }
+
+.locations { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: .85rem; font-variant-numeric: tabular-nums; }
+.locations th, .locations td { padding: 10px 0; border-bottom: 1px solid var(--border); text-align: right; }
+.locations th:first-child { text-align: left; }
+.locations thead th { color: var(--muted); font-weight: 500; }
+.locations tbody tr:last-child > * { border-bottom: 0; }

@@ -1,14 +1,9 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.181.1/+esm";
 
+import { isAcute, locus } from "./geometry.mjs";
+
 const stage = document.querySelector("#view3d");
 const loading = document.querySelector("#loading3d");
-const volumeEl = document.querySelector("#volumeValue");
-const pointButtons = [...document.querySelectorAll(".point-button")];
-const coordInputs = [
-  document.querySelector("#coordX"),
-  document.querySelector("#coordY"),
-  document.querySelector("#coordZ"),
-];
 const fitButton = document.querySelector("#fitButton");
 const resetButton = document.querySelector("#resetButton");
 
@@ -42,10 +37,10 @@ axes.material.opacity = 0.6;
 scene.add(axes);
 
 const initial = [
-  new THREE.Vector3(-2, -1, -1),
-  new THREE.Vector3(2, -1, -1),
-  new THREE.Vector3(0, 2, -1),
-  new THREE.Vector3(0, 0.2, 2),
+  new THREE.Vector3(-2, 0, -1.3),
+  new THREE.Vector3(2, 0, -1.3),
+  new THREE.Vector3(0, 0, 2),
+  new THREE.Vector3(0, 1, 0),
 ];
 
 const pointColors = [
@@ -148,7 +143,7 @@ function makeLabel(text, color) {
   return sprite;
 }
 
-const labelSprites = ["A", "B", "C", "D"].map((name, index) =>
+const labelSprites = ["A", "B", "C", "Σ"].map((name, index) =>
   makeLabel(name, pointColors[index]),
 );
 
@@ -156,7 +151,40 @@ const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 const dragPlane = new THREE.Plane();
 const dragIntersection = new THREE.Vector3();
-const cameraDirection = new THREE.Vector3();
+const correlationInput = document.querySelector("#correlation");
+const status = document.querySelector("#status");
+const pathGeometry = new THREE.BufferGeometry();
+const pathLine = new THREE.Line(pathGeometry, new THREE.LineDashedMaterial({color: 0x8f6ac8, dashSize: 0.09, gapSize: 0.06}));
+scene.add(pathLine);
+let rho = 0;
+function predictions() { return pointMeshes.slice(0,3).map(m => [m.position.x,m.position.z]); }
+function solve() {
+  const curve = locus(predictions(), [0, 1]);
+  const upper = Math.max(0, curve.max - 0.001);
+  rho = Math.max(-0.99, Math.min(upper, rho));
+  correlationInput.value = rho;
+  document.querySelector("#rhoValue").textContent = rho.toFixed(3);
+  document.querySelector("#rangeValue").textContent = `Reachable correlation:\n−0.990 to ${upper.toFixed(3)}`;
+  pointMeshes[3].position.fromArray(curve.at(rho));
+  pathGeometry.setFromPoints(curve.path.map(p => new THREE.Vector3(...p)));
+  pathLine.computeLineDistances();
+  const d = pointMeshes[3].position;
+  const residuals = pointMeshes.slice(0,3).map(m => m.position.clone().sub(d));
+  document.querySelector("#angles").textContent = [[0,1],[0,2],[1,2]].map(([i,j]) =>
+    `${"ABC"[i]}Σ${"ABC"[j]}: ${(residuals[i].angleTo(residuals[j])*180/Math.PI).toFixed(1)}°`).join("\n");
+}
+function movePrediction(index, candidate) {
+  const points = predictions();
+  points[index] = [candidate.x, candidate.z];
+  if (!isAcute(points)) {
+    status.textContent = "Keep the triangle acute.";
+    return;
+  }
+  status.textContent = "";
+  pointMeshes[index].position.copy(candidate);
+}
+correlationInput.addEventListener("input", () => { rho = Number(correlationInput.value); updateGeometry(); });
+document.querySelector("#uncorrelated").addEventListener("click", () => { rho=0; updateGeometry(); });
 
 let selected = 0;
 let interaction = null;
@@ -172,29 +200,20 @@ const orbit = {
 
 function updateCamera() {
   const sinPhi = Math.sin(orbit.phi);
+  const radius = orbit.radius * Math.max(1, 1 / camera.aspect);
 
   camera.position.set(
-    orbit.target.x + orbit.radius * sinPhi * Math.sin(orbit.theta),
-    orbit.target.y + orbit.radius * Math.cos(orbit.phi),
-    orbit.target.z + orbit.radius * sinPhi * Math.cos(orbit.theta),
+    orbit.target.x + radius * sinPhi * Math.sin(orbit.theta),
+    orbit.target.y + radius * Math.cos(orbit.phi),
+    orbit.target.z + radius * sinPhi * Math.cos(orbit.theta),
   );
 
   camera.lookAt(orbit.target);
 }
 
-function calculateVolume() {
-  const [a, b, c, d] = pointMeshes.map((mesh) => mesh.position);
-
-  const ab = new THREE.Vector3().subVectors(b, a);
-  const ac = new THREE.Vector3().subVectors(c, a);
-  const ad = new THREE.Vector3().subVectors(d, a);
-
-  return Math.abs(
-    ab.dot(new THREE.Vector3().crossVectors(ac, ad)),
-  ) / 6;
-}
-
 function updateGeometry() {
+  solve();
+  updateLocations();
   const p = pointMeshes.map((mesh) => mesh.position);
 
   const triangles = [
@@ -243,25 +262,18 @@ function updateGeometry() {
     labelSprites[index].position.y += 0.32;
   });
 
-  volumeEl.textContent = calculateVolume().toLocaleString(undefined, {
-    maximumFractionDigits: 4,
-  });
+
 }
 
-function syncSelectedInputs() {
-  const point = pointMeshes[selected].position;
-
-  coordInputs[0].value = point.x.toFixed(2);
-  coordInputs[1].value = point.y.toFixed(2);
-  coordInputs[2].value = point.z.toFixed(2);
+function updateLocations() {
+  pointMeshes.slice(0, 3).forEach((mesh, index) => {
+    document.querySelector(`#location-${index}-x`).textContent = mesh.position.x.toFixed(2);
+    document.querySelector(`#location-${index}-y`).textContent = mesh.position.z.toFixed(2);
+  });
 }
 
 function selectPoint(index) {
   selected = index;
-
-  pointButtons.forEach((button, i) => {
-    button.setAttribute("aria-pressed", String(i === selected));
-  });
 
   pointMeshes.forEach((mesh, i) => {
     mesh.scale.setScalar(i === selected ? 1.35 : 1);
@@ -275,7 +287,6 @@ function selectPoint(index) {
     }
   });
 
-  syncSelectedInputs();
 }
 
 function pointerToNDC(event) {
@@ -297,7 +308,7 @@ renderer.domElement.addEventListener("pointerdown", (event) => {
   }
 
   raycaster.setFromCamera(pointer, camera);
-  const hits = raycaster.intersectObjects(pointMeshes, false);
+  const hits = raycaster.intersectObjects(pointMeshes.slice(0,3), false);
 
   lastX = event.clientX;
   lastY = event.clientY;
@@ -310,11 +321,7 @@ renderer.domElement.addEventListener("pointerdown", (event) => {
     selectPoint(mesh.userData.index);
     interaction = "point";
 
-    camera.getWorldDirection(cameraDirection);
-    dragPlane.setFromNormalAndCoplanarPoint(
-      cameraDirection,
-      mesh.position,
-    );
+    dragPlane.set(new THREE.Vector3(0, 1, 0), 0);
 
     renderer.domElement.classList.add("drag-point");
   } else {
@@ -339,7 +346,7 @@ renderer.domElement.addEventListener("pointermove", (event) => {
     orbit.phi = THREE.MathUtils.clamp(
       orbit.phi - dy * 0.008,
       0.08,
-      Math.PI - 0.08,
+      Math.PI / 2 - 0.08,
     );
 
     lastX = event.clientX;
@@ -372,11 +379,11 @@ renderer.domElement.addEventListener("pointermove", (event) => {
       50,
     );
 
-    pointMeshes[selected].position.copy(dragIntersection);
+    dragIntersection.y = 0;
+    movePrediction(selected, dragIntersection);
 
     updateGeometry();
-    syncSelectedInputs();
-  }
+    }
 });
 
 function endPointer(event) {
@@ -412,33 +419,6 @@ renderer.domElement.addEventListener(
   { passive: false },
 );
 
-pointButtons.forEach((button) => {
-  button.addEventListener("click", () => {
-    selectPoint(Number(button.dataset.index));
-  });
-});
-
-coordInputs.forEach((input, axis) => {
-  input.addEventListener("change", () => {
-    let value = Number(input.value);
-
-    if (!Number.isFinite(value)) {
-      syncSelectedInputs();
-      return;
-    }
-
-    value = THREE.MathUtils.clamp(value, -50, 50);
-
-    pointMeshes[selected].position.setComponent(
-      axis,
-      value,
-    );
-
-    updateGeometry();
-    syncSelectedInputs();
-  });
-});
-
 function fitView() {
   const center = new THREE.Vector3();
 
@@ -466,6 +446,8 @@ function fitView() {
 fitButton.addEventListener("click", fitView);
 
 resetButton.addEventListener("click", () => {
+  rho = 0;
+  status.textContent = "";
   pointMeshes.forEach((mesh, index) => {
     mesh.position.copy(initial[index]);
   });
@@ -515,12 +497,9 @@ function resizeRendererToDisplaySize() {
 
     camera.aspect = cssWidth / cssHeight;
     camera.updateProjectionMatrix();
+    updateCamera();
   }
 }
-
-coordInputs.forEach((input) => {
-  input.disabled = false;
-});
 
 fitButton.disabled = false;
 resetButton.disabled = false;
